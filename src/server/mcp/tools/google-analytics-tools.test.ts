@@ -82,7 +82,7 @@ describe("Google Analytics MCP tools", () => {
     expect(result.structuredContent).toMatchObject({
       status: "ok",
       rowCount: 1,
-      meta: { projectId: "project_1", organizationId: "org_123" },
+      meta: { projectId: "project_1" },
     });
   });
 
@@ -253,6 +253,7 @@ describe("Google Analytics MCP tools", () => {
       },
       comparison: {},
       trend: [],
+      warnings: [],
     });
     mocks.getMeasurementHealth.mockResolvedValue({
       status: "ok",

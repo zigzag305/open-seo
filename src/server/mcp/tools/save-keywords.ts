@@ -65,7 +65,7 @@ export const saveKeywordsTool = {
     annotations: {
       readOnlyHint: false,
       openWorldHint: false,
-      destructiveHint: false,
+      destructiveHint: true,
     },
   },
   handler: withMcpProjectAuth(async (args: Args, context) => {

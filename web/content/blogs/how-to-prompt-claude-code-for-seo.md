@@ -94,6 +94,19 @@ Ten minutes later you'll have a short, prioritized list and the reasoning behind
 
 That works with or without OpenSEO connected. With it, the answers come with real numbers attached.
 
+## What each SEO skill does
+
+If you ran the two plugin commands above, you already have all nine skills, and the Codex plugin installs the same set. Anywhere else, [connect MCP](/docs/mcp) first and then [add the skill files](/docs/skills/setup).
+
+Each skill hands Claude a complete workflow. The ones you'll reach for most:
+
+- [SEO Audit](/docs/skills/seo-audit) audits your site and returns a one-page, plain-language report built around a single next action.
+- [Keyword Research](/docs/skills/keyword-research) finds keywords worth targeting and explains why each one fits your business.
+- [Competitive Landscape](/docs/skills/competitive-landscape) maps who is winning across your market and where the openings are.
+- [Link Prospecting](/docs/skills/link-prospecting) finds qualified outreach prospects and the angle that makes each one relevant.
+- [Local SEO](/docs/skills/local-seo) audits a Google Business Profile, compares it to local competitors, and shows where you drop out of Google Maps around a location.
+
+You don't have to memorize any of this. Ask Claude which one fits, or read the [skills docs](/docs/skills) for the full list.
 
 ## FAQ
 

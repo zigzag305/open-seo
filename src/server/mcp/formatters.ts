@@ -2,7 +2,6 @@ import type { CallToolResult } from "@modelcontextprotocol/server";
 
 type McpResponseMeta = {
   url?: string;
-  organizationId?: string;
   projectId?: string;
   runId?: string;
   creditsCharged?: number;

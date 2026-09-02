@@ -164,14 +164,6 @@ describe("ga4Client admin API", () => {
       .mockResolvedValueOnce(
         jsonResponse({
           streamEnabled: true,
-          scrollsEnabled: true,
-          outboundClicksEnabled: true,
-          siteSearchEnabled: true,
-          videoEngagementEnabled: true,
-          fileDownloadsEnabled: true,
-          pageChangesEnabled: true,
-          formInteractionsEnabled: false,
-          searchQueryParameter: "q,s",
         }),
       )
       .mockResolvedValueOnce(
@@ -222,7 +214,11 @@ describe("ga4Client admin API", () => {
     const metrics = await client.listCustomMetrics("properties/11");
 
     expect(streams[0]?.webStreamData?.measurementId).toBe("G-ABC123");
-    expect(enhanced.siteSearchEnabled).toBe(true);
+    expect(enhanced).toMatchObject({
+      streamEnabled: true,
+      siteSearchEnabled: false,
+      searchQueryParameter: "",
+    });
     expect(keyEvents[0]?.eventName).toBe("purchase");
     expect(dimensions[0]?.parameterName).toBe("content_type");
     expect(metrics[0]?.parameterName).toBe("quality_score");

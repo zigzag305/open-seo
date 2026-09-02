@@ -43,7 +43,7 @@ export const runRankTrackerTool = {
       .passthrough(),
     annotations: {
       readOnlyHint: false,
-      openWorldHint: true,
+      openWorldHint: false,
       destructiveHint: false,
     },
   },

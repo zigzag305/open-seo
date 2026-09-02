@@ -29,6 +29,7 @@ const STATIC_PATHS = [
   "/open-source-seo",
   "/google-search-console-mcp",
   "/roadmap",
+  "/support",
   ...Object.values(FEATURE_PAGE_SLUGS).map((slug) => `/features/${slug}`),
 ];
 

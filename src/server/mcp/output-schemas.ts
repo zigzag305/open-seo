@@ -16,7 +16,6 @@ export function objectSchema(schema: z.ZodType | z.ZodRawShape | undefined) {
 const mcpMetaOutputSchema = z
   .object({
     url: z.string().optional(),
-    organizationId: z.string().optional(),
     projectId: z.string().optional(),
     runId: z.string().optional(),
     creditsCharged: z.number().optional(),

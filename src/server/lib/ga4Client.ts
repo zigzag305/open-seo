@@ -66,15 +66,16 @@ const dataStreamsResponseSchema = z.object({
   nextPageToken: z.string().optional(),
 });
 const enhancedMeasurementSettingsSchema = z.object({
-  streamEnabled: z.boolean(),
-  scrollsEnabled: z.boolean(),
-  outboundClicksEnabled: z.boolean(),
-  siteSearchEnabled: z.boolean(),
-  videoEngagementEnabled: z.boolean(),
-  fileDownloadsEnabled: z.boolean(),
-  pageChangesEnabled: z.boolean(),
-  formInteractionsEnabled: z.boolean(),
-  searchQueryParameter: z.string(),
+  // ProtoJSON omits scalar fields at their default values.
+  streamEnabled: z.boolean().default(false),
+  scrollsEnabled: z.boolean().default(false),
+  outboundClicksEnabled: z.boolean().default(false),
+  siteSearchEnabled: z.boolean().default(false),
+  videoEngagementEnabled: z.boolean().default(false),
+  fileDownloadsEnabled: z.boolean().default(false),
+  pageChangesEnabled: z.boolean().default(false),
+  formInteractionsEnabled: z.boolean().default(false),
+  searchQueryParameter: z.string().default(""),
   uriQueryParameter: z.string().optional().default(""),
 });
 const keyEventSchema = z.object({

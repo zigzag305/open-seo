@@ -15,7 +15,9 @@ import {
 import { AuditProgressKV } from "@/server/lib/audit/progress-kv";
 import {
   adjustCrawlWindow,
-  INITIAL_CRAWL_WINDOW,
+  clampCrawlWindow,
+  CRAWL_WINDOW,
+  RETRY_CRAWL_WINDOW,
 } from "@/server/lib/audit/crawl-window";
 import { crawlPage } from "@/server/workflows/site-audit-workflow-helpers";
 import { pgStep } from "@/server/workflows/pgStep";
@@ -34,6 +36,14 @@ const CHUNK_TARGET_PAGES = 200;
 const CHUNK_SOFT_DEADLINE_MS = 90_000;
 /** Crawled pages are persisted in sub-batches of this size. */
 const PERSIST_BATCH_SIZE = 25;
+/**
+ * The first sub-batch of a chunk is deliberately small: the crawl window
+ * only adapts when a sub-batch persists, and on a heavy-page site a full
+ * 25-page batch crawled at the starting window was already enough to
+ * exceed the isolate's memory. Five pages tell the byte bound what the
+ * site's pages weigh before the window commits to more.
+ */
+const FIRST_PERSIST_BATCH_SIZE = 5;
 /**
  * Stop launching new fetches while more than this many persist sub-batches
  * are waiting: persistence is sequential, so when the DB falls behind a fast
@@ -91,6 +101,11 @@ export async function runCrawlPhase(
   let attemptedTotal = 0;
   let pending = params.seededCount;
   let zeroProgressChunks = 0;
+  // The adapted window carries across chunks via durable step results:
+  // without this every chunk restarted at the initial window and re-learned
+  // the site's page weight the hard way — on heavy-page sites that meant an
+  // exceededMemory death every ~200 pages.
+  let windowHint = CRAWL_WINDOW.initial;
 
   while (pending > 0 && attemptedTotal < params.maxPages) {
     chunkNo += 1;
@@ -103,6 +118,7 @@ export async function runCrawlPhase(
           ...params,
           chunkNo,
           attemptedBefore: attemptedTotal,
+          startWindow: windowHint,
         }),
     );
     // Apply the chunk's counters even when it did no new work (a retried
@@ -110,6 +126,9 @@ export async function runCrawlPhase(
     // with up-to-date scratchpad totals) — finalize must not see stale ones.
     attemptedTotal = result.attempted;
     pending = result.pending;
+    // `?? initial`: an instance in flight across a deploy replays cached
+    // step results from before endWindow existed.
+    windowHint = result.endWindow ?? CRAWL_WINDOW.initial;
     // One zero-attempt chunk is normal (retry of a completed chunk number);
     // two in a row means the frontier is unservable — stop with what we
     // have instead of spinning forever.
@@ -122,8 +141,17 @@ export async function runCrawlPhase(
 }
 
 async function runCrawlChunk(
-  input: CrawlPhaseParams & { chunkNo: number; attemptedBefore: number },
-): Promise<{ attemptedInChunk: number; attempted: number; pending: number }> {
+  input: CrawlPhaseParams & {
+    chunkNo: number;
+    attemptedBefore: number;
+    startWindow: number;
+  },
+): Promise<{
+  attemptedInChunk: number;
+  attempted: number;
+  pending: number;
+  endWindow: number;
+}> {
   const { auditId, workflowInstanceId, origin, maxPages, robots, chunkNo } =
     input;
   const scratchpad = getAuditScratchpad(auditId);
@@ -132,23 +160,34 @@ async function runCrawlChunk(
     CHUNK_TARGET_PAGES,
     maxPages - input.attemptedBefore,
   );
-  const claimed = await scratchpad.claimChunk(chunkNo, claimLimit);
+  const { urls: claimed, isRetry } = await scratchpad.claimChunk(
+    chunkNo,
+    claimLimit,
+  );
   if (claimed.length === 0) {
     const stats = await scratchpad.getStats();
     return {
       attemptedInChunk: 0,
       attempted: stats.attempted,
       pending: stats.pending,
+      endWindow: input.startWindow,
     };
   }
 
   const depthByUrl = new Map(claimed.map((entry) => [entry.url, entry.depth]));
   const deadlineAt = Date.now() + CHUNK_SOFT_DEADLINE_MS;
 
-  let windowSize = INITIAL_CRAWL_WINDOW;
+  // A retry means the previous attempt died mid-crawl (in production almost
+  // always exceededMemory), and it is the chunk's last attempt — so it runs
+  // under drastically reduced limits instead of the profile that just failed.
+  const limits = isRetry ? RETRY_CRAWL_WINDOW : CRAWL_WINDOW;
+  let windowSize = isRetry
+    ? limits.initial
+    : clampCrawlWindow(input.startWindow, limits);
   let nextIndex = 0;
   let attemptedInChunk = 0;
   const inFlight = new Set<Promise<void>>();
+  let persistThreshold = FIRST_PERSIST_BATCH_SIZE;
   let batch: CrawledPageResult[] = [];
   // Persistence runs concurrently with fetching (pipelined) but sequentially
   // with itself, so DB write pressure stays bounded at one batch at a time.
@@ -159,7 +198,8 @@ async function runCrawlChunk(
     if (batch.length === 0) return;
     const pages = batch;
     batch = [];
-    windowSize = adjustCrawlWindow(windowSize, pages);
+    persistThreshold = PERSIST_BATCH_SIZE;
+    windowSize = adjustCrawlWindow(windowSize, pages, limits);
     queuedPersists += 1;
     persistChain = persistChain
       .then(() =>
@@ -184,7 +224,7 @@ async function runCrawlChunk(
       .then((page) => {
         attemptedInChunk += 1;
         batch.push(page);
-        if (batch.length >= PERSIST_BATCH_SIZE) flush();
+        if (batch.length >= persistThreshold) flush();
       })
       .finally(() => {
         inFlight.delete(promise);
@@ -239,6 +279,7 @@ async function runCrawlChunk(
     attemptedInChunk,
     attempted: stats.attempted,
     pending: stats.pending,
+    endWindow: windowSize,
   };
 }
 

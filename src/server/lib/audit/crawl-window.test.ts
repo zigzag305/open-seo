@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { adjustCrawlWindow } from "@/server/lib/audit/crawl-window";
+import {
+  adjustCrawlWindow,
+  RETRY_CRAWL_WINDOW,
+} from "@/server/lib/audit/crawl-window";
 import type {
   CrawledPageResult,
   PageFetchClass,
@@ -79,11 +82,30 @@ describe("adjustCrawlWindow", () => {
   });
 
   it("caps the window so heavy pages stay inside the byte budget", () => {
-    // 1 MiB average pages: 16 MiB budget / 1 MiB = window of 16.
+    // 1 MiB average pages: 8 MiB budget / 1 MiB = window of 8.
     const recent = Array.from({ length: 25 }, () =>
       page("ok", 300, 1024 * 1024),
     );
-    expect(adjustCrawlWindow(20, recent)).toBe(16);
+    expect(adjustCrawlWindow(20, recent)).toBe(8);
+  });
+
+  it("does not grow on a small sample, but still applies the byte bound", () => {
+    const fastSmall = Array.from({ length: 5 }, () => page("ok", 400));
+    expect(adjustCrawlWindow(10, fastSmall)).toBe(10);
+    const fastHeavy = Array.from({ length: 5 }, () =>
+      page("ok", 400, 1024 * 1024),
+    );
+    expect(adjustCrawlWindow(10, fastHeavy)).toBe(8);
+  });
+
+  it("retry limits keep the window small even on a clean, fast site", () => {
+    const recent = Array.from({ length: 25 }, () => page("ok", 400));
+    expect(adjustCrawlWindow(3, recent, RETRY_CRAWL_WINDOW)).toBe(5);
+  });
+
+  it("retry limits shrink below the normal minimum on trouble", () => {
+    const recent = Array.from({ length: 10 }, () => page("error", 15_000));
+    expect(adjustCrawlWindow(3, recent, RETRY_CRAWL_WINDOW)).toBe(2);
   });
 
   it("keeps the byte bound at the minimum window even for huge pages", () => {

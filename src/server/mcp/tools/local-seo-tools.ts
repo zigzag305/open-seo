@@ -225,7 +225,7 @@ export const getBusinessProfileTool = {
       ...optionalMetaOutputSchema,
     },
     annotations: {
-      readOnlyHint: true,
+      readOnlyHint: false,
       openWorldHint: false,
       destructiveHint: false,
     },
@@ -374,7 +374,7 @@ export const getBusinessReviewsTool = {
       ...optionalMetaOutputSchema,
     },
     annotations: {
-      readOnlyHint: true,
+      readOnlyHint: false,
       openWorldHint: false,
       destructiveHint: false,
     },
@@ -514,7 +514,7 @@ export const getBusinessUpdatesTool = {
       ...optionalMetaOutputSchema,
     },
     annotations: {
-      readOnlyHint: true,
+      readOnlyHint: false,
       openWorldHint: false,
       destructiveHint: false,
     },
@@ -908,7 +908,7 @@ export const getLocalRankGridTool = {
       ...optionalMetaOutputSchema,
     },
     annotations: {
-      readOnlyHint: true,
+      readOnlyHint: false,
       openWorldHint: false,
       destructiveHint: false,
     },

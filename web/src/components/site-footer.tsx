@@ -60,6 +60,7 @@ export function SiteFooter({ className }: { className?: string }) {
         <div>
           <p className="font-semibold text-neutral-900">Company</p>
           <div className="mt-2 flex flex-col gap-1.5">
+            <Link to="/support">Support</Link>
             <Link to="/roadmap">Roadmap</Link>
             <Link to="/pricing">Pricing</Link>
             <a

@@ -26,6 +26,17 @@ export interface ClaimedUrl {
   inSitemap: boolean;
 }
 
+interface ClaimedChunk {
+  urls: ClaimedUrl[];
+  /**
+   * True when a prior attempt of this chunk already claimed work — i.e. the
+   * caller is a workflow step retry after that attempt died mid-crawl. The
+   * crawler uses this to retry far more conservatively (the usual cause of a
+   * dead attempt is exceededMemory).
+   */
+  isRetry: boolean;
+}
+
 export interface FrontierStats {
   /** Pages attempted (crawled or errored) so far. */
   attempted: number;
@@ -147,12 +158,12 @@ export class AuditScratchpad extends DurableObject {
    * had leased (link-discovered URLs drain before sitemap-only ones, FIFO
    * within each class — same ordering as the old in-memory queues).
    */
-  async claimChunk(chunkNo: number, limit: number): Promise<ClaimedUrl[]> {
+  async claimChunk(chunkNo: number, limit: number): Promise<ClaimedChunk> {
     const existing = this.selectClaimed(
       `SELECT url, depth, in_sitemap FROM frontier WHERE state = 'leased' AND chunk_no = ?`,
       chunkNo,
     );
-    if (existing.length > 0) return existing;
+    if (existing.length > 0) return { urls: existing, isRetry: true };
     // A retried step whose earlier attempt already crawled this chunk's
     // leases must not claim a fresh set under the same chunk number — that
     // would duplicate work and overshoot the page budget.
@@ -164,8 +175,8 @@ export class AuditScratchpad extends DurableObject {
         chunkNo,
       )
       .one();
-    if (done.n > 0) return [];
-    if (limit <= 0) return [];
+    if (done.n > 0) return { urls: [], isRetry: true };
+    if (limit <= 0) return { urls: [], isRetry: false };
 
     const fresh = this.selectClaimed(
       `SELECT url, depth, in_sitemap FROM frontier WHERE state = 'pending'
@@ -179,7 +190,7 @@ export class AuditScratchpad extends DurableObject {
         row.url,
       );
     }
-    return fresh;
+    return { urls: fresh, isRetry: false };
   }
 
   /** Persist one crawled sub-batch: completions, mirror rows, links, frontier. */

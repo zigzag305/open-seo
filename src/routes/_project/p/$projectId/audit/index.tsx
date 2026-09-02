@@ -171,14 +171,27 @@ function AuditDetail({
                 Site audit couldn't fully crawl this website.
               </p>
               <p>
-                This is often caused by anti-bot or firewall settings. Email{" "}
+                Sorry! This site's bot protection blocked our crawler. We don't
+                have a workaround for this yet. Desktop crawlers run from your
+                own machine and usually get past it: try{" "}
                 <a
                   className="link link-primary"
-                  href={`mailto:${SUPPORT_EMAIL}`}
+                  href="https://github.com/PhialsBasement/LibreCrawl"
+                  target="_blank"
+                  rel="noreferrer"
                 >
-                  {SUPPORT_EMAIL}
+                  LibreCrawl
                 </a>{" "}
-                and we'll help configure auditing for your site.
+                (free, open source) or{" "}
+                <a
+                  className="link link-primary"
+                  href="https://www.screamingfrog.co.uk/seo-spider/"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Screaming Frog
+                </a>{" "}
+                (free up to 500 URLs).
               </p>
             </div>
           </div>

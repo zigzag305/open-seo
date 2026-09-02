@@ -206,3 +206,24 @@ describe("analyzeHtml parity with the DOM reference", () => {
     </body>`);
   });
 });
+
+describe("analyzeHtml extraction caps", () => {
+  it("caps links and images per page", () => {
+    const links = Array.from(
+      { length: 1_100 },
+      (_, i) => `<a href="/p/${i}">link ${i}</a>`,
+    ).join("");
+    const images = Array.from(
+      { length: 1_100 },
+      (_, i) => `<img src="/i/${i}.png">`,
+    ).join("");
+    const analysis = analyzeHtml(
+      `<body>${links}${images}</body>`,
+      "https://example.com/",
+      200,
+      100,
+    );
+    expect(analysis.links).toHaveLength(1_000);
+    expect(analysis.images).toHaveLength(1_000);
+  });
+});
