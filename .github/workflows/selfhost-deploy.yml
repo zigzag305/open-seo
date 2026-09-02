@@ -36,7 +36,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'preflight = solo valida secretos; deploy = despliega de verdad'
+        description: "preflight = solo valida secretos; deploy = despliega de verdad"
         required: true
         default: preflight
         type: choice
