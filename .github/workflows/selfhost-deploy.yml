@@ -11,31 +11,51 @@ name: Self-host deploy
 #
 # Secretos que hay que crear en Settings -> Secrets and variables -> Actions:
 #
-#   CLOUDFLARE_API_TOKEN   Permisos, sobre la cuenta:
-#                            Workers Scripts        Edit
-#                            Workers KV Storage     Edit
-#                            D1                     Edit
-#                            Workers R2 Storage      Edit
-#                            Secrets Store          Read
-#                            Account Settings       Read
+#   CLOUDFLARE_API_TOKEN   Permisos, todos sobre la cuenta:
+#                            Workers Scripts                                Edit
+#                            Workers KV Storage                             Edit
+#                            D1                                             Edit
+#                            Workers R2 Storage                             Edit
+#                            Workflows                                      Edit
+#                            Secrets Store                                  Edit
+#                            Account Settings                               Read
 #                            Access: Apps and Policies                      Edit
 #                            Access: Organizations, Identity Providers,
 #                              and Groups                                   Edit
-#                          Los dos «Read» son como alchemy recupera el token de
-#                          su state store. Los dos de Access solo hacen falta si
-#                          el deploy provisiona la puerta de login por ti — si
-#                          pones TEAM_DOMAIN y POLICY_AUD en ENV_SELFHOST, la
+#
+#                          Los de Access solo hacen falta si el deploy
+#                          provisiona la puerta de login por ti — si pones
+#                          TEAM_DOMAIN y POLICY_AUD en ENV_SELFHOST, la
 #                          gestionas tu y ambos sobran.
 #
-#                          OJO, son DOS familias distintas de Access y es un
-#                          error facil: «Apps and Policies» no cubre leer ni
-#                          crear la organizacion de Zero Trust. Sin la segunda,
-#                          el deploy construye entero y muere al final con
-#                          «Could not read the Zero Trust organization:
-#                          Unauthorized» (alchemy.run.ts:211, en la llamada
-#                          ZeroTrust.listOrganizationsForAccount). Hace falta
-#                          Edit y no Read porque en una cuenta sin equipo Zero
-#                          Trust el propio deploy lo crea.
+#                          Tres trampas, las tres vistas en despliegues reales
+#                          de esta misma cuenta, cada una con su error:
+#
+#                          1. Access son DOS familias distintas. «Apps and
+#                             Policies» no cubre la organizacion de Zero Trust.
+#                             Sin la segunda: «Could not read the Zero Trust
+#                             organization: Unauthorized» (alchemy.run.ts:211,
+#                             en ZeroTrust.listOrganizationsForAccount). Edit y
+#                             no Read porque en una cuenta sin equipo Zero Trust
+#                             el propio deploy lo crea.
+#
+#                          2. Workflows. El worker declara dos
+#                             (SITE_AUDIT_WORKFLOW y RANK_CHECK_WORKFLOW en
+#                             wrangler.jsonc), asi que crearlo necesita este
+#                             permiso. Sin el: «[Api] fail» + «Unauthorized:
+#                             Authentication error» justo en «Pre-creating
+#                             worker». docs/PREVIEW_DEPLOYMENTS.md ya lo pedia.
+#
+#                          3. Secrets Store va en Edit, no en Read, aunque
+#                             PREVIEW_DEPLOYMENTS.md diga Read. Los docs de
+#                             Cloudflare son explicitos: «Edit is also required
+#                             to bind a secret to another Cloudflare resource,
+#                             such as adding a Secrets Store binding to a
+#                             Worker», y avisan de que con Read el deploy falla
+#                             con un error de autorizacion — que es exactamente
+#                             donde muere, al crear el worker que ata los
+#                             secretos del state store.
+#                             https://developers.cloudflare.com/secrets-store/access-control/
 #   CLOUDFLARE_ACCOUNT_ID  Dashboard de Cloudflare, barra lateral derecha.
 #   ENV_SELFHOST           El contenido literal de .env.selfhost. Como minimo
 #                          DATAFORSEO_API_KEY y ACCESS_ALLOWED_EMAILS.
