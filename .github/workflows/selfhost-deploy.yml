@@ -1,0 +1,110 @@
+name: Self-host deploy
+
+# Despliega esta instancia self-host de OpenSEO a Cloudflare desde CI, a mano.
+#
+# Existe porque el flujo documentado (`pnpm alchemy login` + `pnpm
+# deploy:selfhost`) necesita una terminal local con un OAuth interactivo, y aqui
+# se trabaja solo desde el navegador. El preflight del propio repo lo permite:
+# «An explicit API token bypasses login profiles entirely»
+# (scripts/selfhost-deploy-preflight.mjs), asi que con CLOUDFLARE_API_TOKEN no
+# hace falta ni login ni el scope access:write.
+#
+# Secretos que hay que crear en Settings -> Secrets and variables -> Actions:
+#
+#   CLOUDFLARE_API_TOKEN   Permisos, sobre la cuenta:
+#                            Workers Scripts        Edit
+#                            Workers KV Storage     Edit
+#                            D1                     Edit
+#                            Workers R2 Storage      Edit
+#                            Secrets Store          Read
+#                            Account Settings       Read
+#                            Access: Apps and Policies  Edit
+#                          Los dos «Read» son como alchemy recupera el token de
+#                          su state store. El de Access solo hace falta si el
+#                          deploy provisiona la puerta de login por ti — si
+#                          pones TEAM_DOMAIN y POLICY_AUD en ENV_SELFHOST, la
+#                          gestionas tu y ese permiso sobra.
+#   CLOUDFLARE_ACCOUNT_ID  Dashboard de Cloudflare, barra lateral derecha.
+#   ENV_SELFHOST           El contenido literal de .env.selfhost. Como minimo
+#                          DATAFORSEO_API_KEY y ACCESS_ALLOWED_EMAILS.
+#                          Plantilla: .env.selfhost.example
+#
+# Empezar siempre por mode=preflight: valida los secretos en segundos en vez de
+# fallar a mitad de un deploy de varios minutos.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'preflight = solo valida secretos; deploy = despliega de verdad'
+        required: true
+        default: preflight
+        type: choice
+        options: [preflight, deploy]
+
+# Nunca en el repo publico de upstream: su codigo no debe correr con estos
+# secretos. Mismo criterio que usa pr-preview.yml.
+concurrency:
+  group: selfhost-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.repository == 'zigzag305/open-seo'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      # El preflight exige 22.6+; '22' resuelve a la ultima 22.x.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Comprueba que los secretos existen
+        run: |
+          missing=
+          [ -n "${CLOUDFLARE_API_TOKEN:-}" ] || missing="$missing CLOUDFLARE_API_TOKEN"
+          [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ] || missing="$missing CLOUDFLARE_ACCOUNT_ID"
+          [ -n "${ENV_SELFHOST:-}" ] || missing="$missing ENV_SELFHOST"
+          if [ -n "$missing" ]; then
+            echo "::error::Faltan secretos de repositorio:$missing"
+            exit 1
+          fi
+          echo "Los tres secretos estan presentes."
+        env:
+          ENV_SELFHOST: ${{ secrets.ENV_SELFHOST }}
+
+      - name: Escribe .env.selfhost
+        run: printf '%s' "$ENV_SELFHOST" > .env.selfhost
+        env:
+          ENV_SELFHOST: ${{ secrets.ENV_SELFHOST }}
+
+      - name: Instala dependencias
+        run: pnpm install --frozen-lockfile
+
+      # Falla en segundos si falta DATAFORSEO_API_KEY o ACCESS_ALLOWED_EMAILS,
+      # en vez de a mitad del build.
+      - name: Preflight
+        run: node scripts/selfhost-deploy-preflight.mjs
+
+      - name: Deploy
+        if: inputs.mode == 'deploy'
+        run: pnpm deploy:selfhost --yes
+
+      - name: Que hacer ahora
+        if: inputs.mode == 'preflight'
+        run: |
+          echo "Preflight correcto. Los secretos valen."
+          echo "Vuelve a lanzar este workflow con mode=deploy para desplegar."
