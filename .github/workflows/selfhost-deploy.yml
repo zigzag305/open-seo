@@ -18,12 +18,24 @@ name: Self-host deploy
 #                            Workers R2 Storage      Edit
 #                            Secrets Store          Read
 #                            Account Settings       Read
-#                            Access: Apps and Policies  Edit
+#                            Access: Apps and Policies                      Edit
+#                            Access: Organizations, Identity Providers,
+#                              and Groups                                   Edit
 #                          Los dos «Read» son como alchemy recupera el token de
-#                          su state store. El de Access solo hace falta si el
-#                          deploy provisiona la puerta de login por ti — si
+#                          su state store. Los dos de Access solo hacen falta si
+#                          el deploy provisiona la puerta de login por ti — si
 #                          pones TEAM_DOMAIN y POLICY_AUD en ENV_SELFHOST, la
-#                          gestionas tu y ese permiso sobra.
+#                          gestionas tu y ambos sobran.
+#
+#                          OJO, son DOS familias distintas de Access y es un
+#                          error facil: «Apps and Policies» no cubre leer ni
+#                          crear la organizacion de Zero Trust. Sin la segunda,
+#                          el deploy construye entero y muere al final con
+#                          «Could not read the Zero Trust organization:
+#                          Unauthorized» (alchemy.run.ts:211, en la llamada
+#                          ZeroTrust.listOrganizationsForAccount). Hace falta
+#                          Edit y no Read porque en una cuenta sin equipo Zero
+#                          Trust el propio deploy lo crea.
 #   CLOUDFLARE_ACCOUNT_ID  Dashboard de Cloudflare, barra lateral derecha.
 #   ENV_SELFHOST           El contenido literal de .env.selfhost. Como minimo
 #                          DATAFORSEO_API_KEY y ACCESS_ALLOWED_EMAILS.
