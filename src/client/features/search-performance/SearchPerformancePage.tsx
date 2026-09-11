@@ -220,7 +220,13 @@ export function SearchPerformancePage({ projectId }: { projectId: string }) {
           </div>
         ) : !report?.connected ? (
           <div className="max-w-2xl">
-            <SearchConsoleConnectionCard projectId={projectId} />
+            {/* The report answered and said no. If our own record still says
+                the project is linked, the card says the grant expired instead
+                of showing a green "Connected" pill over an empty page. */}
+            <SearchConsoleConnectionCard
+              projectId={projectId}
+              reconnectRequired={report?.connected === false}
+            />
           </div>
         ) : (
           <>

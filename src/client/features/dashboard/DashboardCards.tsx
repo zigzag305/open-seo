@@ -46,12 +46,22 @@ export function GscCard({
     enabled: connected,
   });
 
+  // Google refused the report even though our record says this project is
+  // linked: the grant is dead. The connection card used to render its plain
+  // connected state here — green pill, property, "Connected by …" — all read
+  // from our own record, so it kept saying everything was fine while nothing
+  // arrived. `reconnectRequired` is what lets it say so instead.
+  const grantIsDead = connected && reportQuery.data?.connected === false;
+
   // Not connected (or a dead grant discovered by the report call): the
   // connection card sells and runs the whole flow itself.
   if (!connected || (reportQuery.data && !reportQuery.data.connected)) {
     return (
       <div id="connect-gsc">
-        <SearchConsoleConnectionCard projectId={projectId} />
+        <SearchConsoleConnectionCard
+          projectId={projectId}
+          reconnectRequired={grantIsDead}
+        />
       </div>
     );
   }

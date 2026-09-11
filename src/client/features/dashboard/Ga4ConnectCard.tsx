@@ -6,9 +6,11 @@ import { dismissDashboardGa4Card } from "@/serverFunctions/dashboard";
 export function Ga4ConnectCard({
   projectId,
   connected,
+  reconnectRequired = false,
 }: {
   projectId: string;
   connected: boolean;
+  reconnectRequired?: boolean;
 }) {
   const queryClient = useQueryClient();
   const dismissMutation = useMutation({
@@ -22,6 +24,7 @@ export function Ga4ConnectCard({
   return (
     <GoogleAnalyticsConnectionCard
       projectId={projectId}
+      reconnectRequired={reconnectRequired}
       onDismiss={
         connected
           ? undefined

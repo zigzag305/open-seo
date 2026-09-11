@@ -9,6 +9,7 @@ import { GoogleGlyph } from "@/client/features/gsc/GoogleGlyph";
 import { GoogleLinkErrorAlert } from "@/client/features/integrations/GoogleLinkErrorAlert";
 import { GoogleOAuthSetupWarning } from "@/client/features/integrations/GoogleOAuthSetupWarning";
 import { IntegrationConnectionCard } from "@/client/features/integrations/IntegrationConnectionCard";
+import { ReconnectNotice } from "@/client/features/integrations/ReconnectNotice";
 import { GoogleAnalyticsLogo } from "@/client/features/integrations/GoogleProductLogos";
 import { startGoogleLink } from "@/client/features/integrations/startGoogleLink";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
@@ -27,11 +28,18 @@ export function GoogleAnalyticsConnectionCard({
   onDismiss,
   dismissing = false,
   heading,
+  reconnectRequired = false,
 }: {
   projectId: string;
   onDismiss?: () => void;
   dismissing?: boolean;
   heading?: React.ReactNode;
+  /**
+   * The caller asked Google for data and was refused, even though our record
+   * says this project is connected. Only the dashboard knows this: it is the
+   * one that runs the report query.
+   */
+  reconnectRequired?: boolean;
 }) {
   const hosted = isHostedClientAuthMode();
   const queryClient = useQueryClient();
@@ -119,7 +127,9 @@ export function GoogleAnalyticsConnectionCard({
             : selfHostedNeedsSetup
               ? "setup_required"
               : connected
-                ? "connected"
+                ? reconnectRequired
+                  ? "reconnect_required"
+                  : "connected"
                 : "disconnected"
         }
       >
@@ -140,19 +150,27 @@ export function GoogleAnalyticsConnectionCard({
             ) : null}
           </div>
         ) : connected && !picking ? (
-          <ConnectedState
-            displayName={connection?.propertyDisplayName ?? ""}
-            propertyId={connection?.propertyId ?? ""}
-            timeZone={connection?.propertyTimeZone ?? ""}
-            currencyCode={connection?.propertyCurrencyCode ?? ""}
-            connectedByEmail={connection?.connectedByEmail ?? null}
-            onChange={() => {
-              setSelection(null);
-              setPicking(true);
-            }}
-            onDisconnect={() => disconnectMutation.mutate()}
-            disconnecting={disconnectMutation.isPending}
-          />
+          <div className="space-y-4">
+            {reconnectRequired ? (
+              <ReconnectNotice
+                integrationName="Google Analytics"
+                onReconnect={handleConnect}
+              />
+            ) : null}
+            <ConnectedState
+              displayName={connection?.propertyDisplayName ?? ""}
+              propertyId={connection?.propertyId ?? ""}
+              timeZone={connection?.propertyTimeZone ?? ""}
+              currencyCode={connection?.propertyCurrencyCode ?? ""}
+              connectedByEmail={connection?.connectedByEmail ?? null}
+              onChange={() => {
+                setSelection(null);
+                setPicking(true);
+              }}
+              onDisconnect={() => disconnectMutation.mutate()}
+              disconnecting={disconnectMutation.isPending}
+            />
+          </div>
         ) : showPicker ? (
           <Ga4PropertyPicker
             loading={propertiesQuery.isLoading}

@@ -7,6 +7,7 @@ import { captureClientEvent } from "@/client/lib/posthog";
 import { GoogleGlyph } from "@/client/features/gsc/GoogleGlyph";
 import { GoogleLinkErrorAlert } from "@/client/features/integrations/GoogleLinkErrorAlert";
 import { IntegrationConnectionCard } from "@/client/features/integrations/IntegrationConnectionCard";
+import { ReconnectNotice } from "@/client/features/integrations/ReconnectNotice";
 import { GoogleSearchConsoleLogo } from "@/client/features/integrations/GoogleProductLogos";
 import { SelfHostedSetupWarning } from "@/client/features/gsc/SelfHostedSetupWarning";
 import {
@@ -25,8 +26,15 @@ const GRANT_STATUS_KEY = ["gscGrantStatus"];
 
 export function SearchConsoleConnectionCard({
   projectId,
+  reconnectRequired = false,
 }: {
   projectId: string;
+  /**
+   * The caller asked Google for data and was refused, even though our record
+   * says this project is connected. Only the dashboard knows this: it is the
+   * one that runs the report query.
+   */
+  reconnectRequired?: boolean;
 }) {
   const hosted = isHostedClientAuthMode();
   const queryClient = useQueryClient();
@@ -149,7 +157,9 @@ export function SearchConsoleConnectionCard({
           : selfHostedNeedsSetup
             ? "setup_required"
             : connected
-              ? "connected"
+              ? reconnectRequired
+                ? "reconnect_required"
+                : "connected"
               : "disconnected"
       }
     >
@@ -162,16 +172,24 @@ export function SearchConsoleConnectionCard({
       ) : selfHostedNeedsSetup ? (
         <SelfHostedSetupWarning />
       ) : connected && !picking ? (
-        <ConnectedState
-          siteUrl={connection?.siteUrl ?? ""}
-          connectedByEmail={connection?.connectedByEmail ?? null}
-          onChange={() => {
-            setSelection(null);
-            setPicking(true);
-          }}
-          onDisconnect={() => disconnectMutation.mutate()}
-          disconnecting={disconnectMutation.isPending}
-        />
+        <div className="space-y-4">
+          {reconnectRequired ? (
+            <ReconnectNotice
+              integrationName="Search Console"
+              onReconnect={handleConnect}
+            />
+          ) : null}
+          <ConnectedState
+            siteUrl={connection?.siteUrl ?? ""}
+            connectedByEmail={connection?.connectedByEmail ?? null}
+            onChange={() => {
+              setSelection(null);
+              setPicking(true);
+            }}
+            onDisconnect={() => disconnectMutation.mutate()}
+            disconnecting={disconnectMutation.isPending}
+          />
+        </div>
       ) : showPicker ? (
         <SitePicker
           loading={sitesQuery.isLoading}

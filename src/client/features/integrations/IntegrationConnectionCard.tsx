@@ -3,7 +3,13 @@ import type { ReactNode } from "react";
 type IntegrationConnectionStatus =
   | "connected"
   | "disconnected"
-  | "setup_required";
+  | "setup_required"
+  /**
+   * Linked on our side, but Google is refusing the calls. Distinct from
+   * "connected" because that pill was the whole problem: it read from our
+   * record, not from Google, so a dead grant still showed green.
+   */
+  | "reconnect_required";
 
 /** Shared shell for first-party connection cards such as GSC and GA4. */
 export function IntegrationConnectionCard({
@@ -43,14 +49,17 @@ function ConnectionStatusPill({
   status: IntegrationConnectionStatus;
 }) {
   const connected = status === "connected";
-  const setupRequired = status === "setup_required";
+  // Both of these are "we cannot reach Google yet", so they share the warning
+  // colour; only the wording differs.
+  const needsAttention =
+    status === "setup_required" || status === "reconnect_required";
   return (
     <span
       className={[
         "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium",
         connected
           ? "border-success/30 bg-success/10 text-success"
-          : setupRequired
+          : needsAttention
             ? "border-warning/30 bg-warning/10 text-warning"
             : "border-base-300 bg-base-200 text-base-content/60",
       ].join(" ")}
@@ -60,16 +69,18 @@ function ConnectionStatusPill({
           "size-1.5 rounded-full",
           connected
             ? "bg-success"
-            : setupRequired
+            : needsAttention
               ? "bg-warning"
               : "bg-base-content/40",
         ].join(" ")}
       />
       {connected
         ? "Connected"
-        : setupRequired
+        : status === "setup_required"
           ? "Setup required"
-          : "Not connected"}
+          : status === "reconnect_required"
+            ? "Reconnect needed"
+            : "Not connected"}
     </span>
   );
 }

@@ -79,10 +79,20 @@ export function Ga4Card({
     enabled: connected,
   });
 
+  // Same dead-grant case as Search Console: linked on our side, refused by
+  // Google. See the note in DashboardCards.tsx for why the card needs telling.
+  const grantIsDead = connected && reportQuery.data?.connected === false;
+
   // Not connected (or a dead grant discovered by the report call): the
   // connection card sells and runs the whole flow itself.
   if (!connected || (reportQuery.data && !reportQuery.data.connected)) {
-    return <Ga4ConnectCard projectId={projectId} connected={connected} />;
+    return (
+      <Ga4ConnectCard
+        projectId={projectId}
+        connected={connected}
+        reconnectRequired={grantIsDead}
+      />
+    );
   }
 
   const report = reportQuery.data;
